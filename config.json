@@ -1,0 +1,22 @@
+{
+  "team": {
+    "label": "EdR",
+    "name": "Edmond de Rothschild",
+    "organization": "EDMOND DE ROTSCHILD",
+    "color": "#1f3a5f",
+    "colorDark": "#6f9be0",
+    "compareColor": "#c8102e",
+    "compareColorDark": "#ff5d72"
+  },
+  "event": {
+    "base": "NFL26",
+    "name": "No Finish Line Monaco 2026",
+    "lapKm": 1.054,
+    "start": "2026-11-14T14:00:00+01:00",
+    "end": "2026-11-22T14:00:00+01:00",
+    "timezone": "Europe/Monaco"
+  },
+  "extraRunners": [],
+  "excludeBibs": [],
+  "rosterRefreshHours": 24
+}
