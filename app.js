@@ -101,8 +101,10 @@ function daily(fn) {
   // Le suivi a démarré après le premier jour : le total déjà parcouru avant le premier relevé est
   // réparti à parts égales entre les jours jusqu'au jour du premier relevé (estimation).
   const firstDay = HIST.length ? dayKey(HIST[0].t) : null;
+  // Marcheur ajouté à la liste après le tout premier relevé : on part de son premier relevé du même jour.
+  const base = firstDay ? (HIST.find(s => dayKey(s.t) === firstDay && fn(s) > 0) || HIST[0]) : null;
   const upto = firstDay ? days.filter(d => d <= firstDay) : [];
-  const total0 = firstDay ? fn(HIST[0]) : 0, share = upto.length ? total0 / upto.length : 0;
+  const total0 = base ? fn(base) : 0, share = upto.length ? total0 / upto.length : 0;
   return days.map(d => {
     if (d > today) return null;
     if (firstDay && d < firstDay) { before += share; return +share.toFixed(1); }
