@@ -1,0 +1,75 @@
+name: Relevé Sportips
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      refresh_roster:
+        description: "Reconstruire la liste des marcheurs de l'équipe"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Relevés toutes les 5 min
+        id: loop
+        env:
+          INTERVAL: 300
+          MAX_MINUTES: 330
+          REFRESH_ROSTER: ${{ inputs.refresh_roster && '1' || '' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          stop_at=$(( $(date +%s) + MAX_MINUTES * 60 ))
+          while :; do
+            started=$(date +%s)
+            code=0; node scraper/scrape.mjs || code=$?
+            if [ "$code" -eq 78 ]; then
+              echo "Événement terminé : arrêt de la boucle."
+              echo "finished=1" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            unset REFRESH_ROSTER
+
+            git add data
+            if git diff --cached --quiet; then
+              echo "Rien de nouveau."
+            else
+              git commit -q -m "Relevé $(date -u +'%Y-%m-%d %H:%M') UTC"
+              if ! git pull -q --rebase; then
+                git rebase --abort || true
+                git fetch -q origin && git reset -q --hard "origin/${GITHUB_REF_NAME}"
+              fi
+              git push -q || echo "Push impossible, nouvel essai au prochain relevé."
+            fi
+
+            next=$(( started + INTERVAL ))
+            [ "$next" -ge "$stop_at" ] && break
+            wait=$(( next - $(date +%s) ))
+            [ "$wait" -gt 0 ] && sleep "$wait"
+          done
+          echo "Fin de la boucle, relance."
+
+      - name: Relancer la boucle
+        if: ${{ !cancelled() && steps.loop.outputs.finished != '1' }}
+        run: gh workflow run scrape.yml --ref "$GITHUB_REF_NAME"
+        env:
+          GH_TOKEN: ${{ github.token }}
