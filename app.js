@@ -98,8 +98,15 @@ function series(fn) { return HIST.map(s => ({ x: +new Date(s.t), y: +fn(s).toFix
 function daily(fn) {
   const today = dayKey(NOW);
   let before = 0;
+  // Le suivi a démarré après le premier jour : le total déjà parcouru avant le premier relevé est
+  // réparti à parts égales entre les jours jusqu'au jour du premier relevé (estimation).
+  const firstDay = HIST.length ? dayKey(HIST[0].t) : null;
+  const upto = firstDay ? days.filter(d => d <= firstDay) : [];
+  const total0 = firstDay ? fn(HIST[0]) : 0, share = upto.length ? total0 / upto.length : 0;
   return days.map(d => {
     if (d > today) return null;
+    if (firstDay && d < firstDay) { before += share; return +share.toFixed(1); }
+    if (d === firstDay) before = total0 - share;
     const inDay = HIST.filter(s => dayKey(s.t) === d);
     if (!inDay.length) return 0;
     const end = fn(inDay.at(-1)), v = Math.max(0, end - before);
@@ -107,6 +114,7 @@ function daily(fn) {
     return +v.toFixed(1);
   });
 }
+const estimated = () => HIST.length > 0 && dayKey(HIST[0].t) > days[0];
 // km ajoutés par heure, aujourd'hui
 function hourly(fn) {
   const today = dayKey(NOW), out = new Map();
@@ -245,7 +253,7 @@ function teamView() {
   </section>
 
   <section class="card">
-    <div class="card-h"><div><h3>Rythme de l'équipe</h3><p>${rhythm === "h" ? "Kilomètres ajoutés chaque heure, aujourd'hui" : `Kilomètres par jour sur les ${days.length} jours`}</p></div>
+    <div class="card-h"><div><h3>Rythme de l'équipe</h3><p>${rhythm === "h" ? "Kilomètres ajoutés chaque heure, aujourd'hui" : `Kilomètres par jour sur les ${days.length} jours${estimated() ? " · jours avant le suivi : répartition estimée" : ""}`}</p></div>
       <div class="seg" role="group" aria-label="Période"><button data-rhythm="h" aria-pressed="${rhythm === "h"}">Par heure</button><button data-rhythm="d" aria-pressed="${rhythm === "d"}">Par jour</button></div></div>
     <div class="chart sm"><canvas id="cRhythm" role="img" aria-label="Rythme de l'équipe"></canvas></div>
   </section>
